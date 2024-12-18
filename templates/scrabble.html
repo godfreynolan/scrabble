@@ -23,13 +23,23 @@
             font-size: 18px;
             position: relative;
         }
-        td[data-point]::after {
-            content: attr(data-point);
-            font-size: 10px;
-            color: gray;
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
+        /* Scrabble board color styles */
+        .double-word {
+            background-color: #FF9AA2;
+        }
+        .triple-word {
+            background-color: #FF6F61;
+            color: white;
+        }
+        .double-letter {
+            background-color: #B5EAD7;
+        }
+        .triple-letter {
+            background-color: #99C1F1;
+            color: white;
+        }
+        .center-star {
+            background-color: #FFD700;
         }
         .rack {
             display: flex;
@@ -75,7 +85,19 @@
         {% for i in range(board|length) %}
         <tr>
             {% for j in range(board[i]|length) %}
-            <td data-point="{{ points[i][j] if points else '' }}" data-row="{{ i }}" data-col="{{ j }}">{{ board[i][j] }}</td>
+            {% set cell_class = '' %}
+            {% if (i == 7 and j == 7) %}
+                {% set cell_class = 'center-star' %}
+            {% elif (i == 0 and j == 0) or (i == 0 and j == 14) or (i == 14 and j == 0) or (i == 14 and j == 14) or (i == 7 and j == 7) %}
+                {% set cell_class = 'triple-word' %}
+            {% elif (i % 4 == 0 and j % 4 == 0) and i != 7 and j != 7 %}
+                {% set cell_class = 'double-word' %}
+            {% elif (i % 3 == 0 and j % 3 == 0) and (i != 0 and j != 0) %}
+                {% set cell_class = 'double-letter' %}
+            {% elif (i + j) % 8 == 0 %}
+                {% set cell_class = 'triple-letter' %}
+            {% endif %}
+            <td class="{{ cell_class }}" data-point="{{ points[i][j] if points else '' }}" data-row="{{ i }}" data-col="{{ j }}"></td>
             {% endfor %}
         </tr>
         {% endfor %}
@@ -121,6 +143,35 @@
     </form>
 
     <script>
+        const tiles = document.querySelectorAll('.rack span');
+        const boardCells = document.querySelectorAll('#board td');
+
+        // Enable drag and drop functionality
+        tiles.forEach(tile => {
+            tile.addEventListener('dragstart', (e) => {
+                tile.classList.add('dragging');
+                e.dataTransfer.setData('text/plain', tile.dataset.letter);
+            });
+
+            tile.addEventListener('dragend', () => {
+                tile.classList.remove('dragging');
+            });
+        });
+
+        boardCells.forEach(cell => {
+            cell.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+
+            cell.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const letter = e.dataTransfer.getData('text/plain');
+                if (!cell.textContent.trim()) {
+                    cell.textContent = letter;
+                }
+            });
+        });
+
         function getPossibleWords(player) {
             const rack = Array.from(document.querySelectorAll(`#${player}-rack span`)).map(el => el.textContent).join('');
 
