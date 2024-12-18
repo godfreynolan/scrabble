@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrabble Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        td {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #000;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 18px;
+            position: relative;
+        }
+        td[data-point]::after {
+            content: attr(data-point);
+            font-size: 10px;
+            color: gray;
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+        }
+        .rack {
+            display: flex;
+            margin: 10px 0;
+        }
+        .rack span {
+            width: 40px;
+            height: 40px;
+            margin: 2px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #000;
+            font-size: 18px;
+            cursor: grab;
+        }
+        .rack span.dragging {
+            opacity: 0.5;
+        }
+        form {
+            margin: 20px 0;
+        }
+        input[type="text"] {
+            margin: 5px;
+            padding: 5px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 8px 15px;
+        }
+        .possible-words {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Scrabble Game</h1>
+
+    <h2>Game Board</h2>
+    <table id="board">
+        {% for i in range(board|length) %}
+        <tr>
+            {% for j in range(board[i]|length) %}
+            <td data-point="{{ points[i][j] if points else '' }}" data-row="{{ i }}" data-col="{{ j }}">{{ board[i][j] }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h2>Player Racks</h2>
+    {% for player, rack in players.items() %}
+    <h3>{{ player }}</h3>
+    <div class="rack" id="{{ player }}-rack">
+        {% for letter in rack %}
+        <span draggable="true" data-letter="{{ letter }}">{{ letter }}</span>
+        {% endfor %}
+    </div>
+    <button onclick="getPossibleWords('{{ player }}')">Get Possible Words</button>
+    <div id="{{ player }}-words" class="possible-words"></div>
+    {% endfor %}
+
+    <h2>Place a Word</h2>
+    <form action="/place_word" method="POST">
+        <label for="player">Player:</label>
+        <select name="player" id="player">
+            {% for player in players.keys() %}
+            <option value="{{ player }}">{{ player }}</option>
+            {% endfor %}
+        </select>
+        <br>
+        <label for="word">Word:</label>
+        <input type="text" id="word" name="word" required>
+        <br>
+        <label for="row">Row:</label>
+        <input type="text" id="row" name="row" required>
+        <br>
+        <label for="col">Column:</label>
+        <input type="text" id="col" name="col" required>
+        <br>
+        <label for="direction">Direction:</label>
+        <select name="direction" id="direction">
+            <option value="horizontal">Horizontal</option>
+            <option value="vertical">Vertical</option>
+        </select>
+        <br>
+        <button type="submit">Place Word</button>
+    </form>
+
+    <script>
+        function getPossibleWords(player) {
+            const rack = Array.from(document.querySelectorAll(`#${player}-rack span`)).map(el => el.textContent).join('');
+
+            fetch('/get_possible_words', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ letters: rack }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Response data:', data); // Debugging log
+                    const wordsDiv = document.getElementById(`${player}-words`);
+                    if (data.words) {
+                        const words = data.words.split(','); // Split the string into an array
+                        wordsDiv.textContent = `Possible words: ${words.join(', ')}`;
+                    } else {
+                        wordsDiv.textContent = 'No possible words found.';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching possible words:', err);
+                });
+        }
+    </script>
+</body>
+</html>
